@@ -81,8 +81,6 @@ void agent_init()
 
 /** Host:	agent_init_episode() //////////////////////////////////////////////
 * @brief 	set all agents in active status
-*
-* @param d_active
 */
 
 __global__ void Init_epsiode(bool *d_active) {
@@ -97,9 +95,7 @@ void agent_init_episode() {
 }
 
 /** Host: 	adjust_epsilon() ////////////////////////////////////////////
-* @brief 	Device: Adjust_epsilon()
-* @param 	d_epsilon
-* @return 	__global__
+* @brief 	adjust epsilon, return a CPU variable
 */
 
 __global__ void Adjust_epsilon(float *d_epsilon) {
@@ -123,7 +119,7 @@ float agent_adjustepsilon()
 }
 
 /** Host:	agent_action() ////////////////////////////////////////////
-* @brief
+* @brief	if agent is alive, run algorithm to take action
 */
 
 
@@ -144,8 +140,7 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 		short action;
 		if (rand_state < *d_epsilon) {
 			// float div = 1.000f / ((float)NUM_OF_ACTIONS);
-			// action = (int)(rand_state / div);
-			action = (short)(curand_uniform(&d_state[agent_id]) * NUM_OF_ACTIONS); // (float) #action
+			action = (short)(curand_uniform(&d_state[agent_id]) * NUM_OF_ACTIONS); 
 		}
 		else {
 			// exploitation (greedy policy)
@@ -174,10 +169,7 @@ short* agent_action(int2* cstate) {
 }
 
 /** Host:	agent_update() ////////////////////////////////////////////
-* @brief
-*
-* @param cstate
-* @return __global__
+* @brief	if agent is alive, update qtable 
 */
 
 __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *d_qtable, short *d_action, bool *d_active)
@@ -238,5 +230,4 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 }
 
 
-///////
 
