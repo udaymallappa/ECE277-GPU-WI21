@@ -29,6 +29,7 @@
 
 short *d_action;
 curandState *d_state;
+
 bool  *d_active;
 float *d_qtable;
 
@@ -47,7 +48,7 @@ __global__ void Init_agent(curandState *d_state, bool *d_active)
 }
 
 
-// <<< (#cols, #rows), #agents >>>
+// <<< (#cols, #rows), #actions >>>
 __global__ void Init_qtable(float *d_qtable) 
 {    
 	unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
