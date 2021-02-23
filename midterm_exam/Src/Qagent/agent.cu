@@ -33,7 +33,7 @@
 #define DELTA_EPS	0.01
 
 #define EPS_CEIL	1.0
-#define EPS_BOTTOM  0.0
+#define EPS_BOTTOM	0.0
 
 
 short *d_action;
@@ -45,7 +45,7 @@ float *d_qtable;
 float epsilon;
 
 
-//////////////////////////	agent_init()  //////////////////////////
+//////////////////////////	agent_init()   //////////////////////////
 
 // <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Init_agent(curandState *d_states, bool *d_active)
@@ -97,7 +97,7 @@ void agent_init()
 }
 
 
-//////////////////////////	agent_init_episode() //////////////////////////
+//////////////////////////	agent_init_episode()  //////////////////////////
 
 // <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Init_epsiode(bool *d_active) {
@@ -115,7 +115,7 @@ void agent_init_episode() {
 }
 
 
-//////////////////////////	adjust_epsilon() //////////////////////////
+//////////////////////////	adjust_epsilon()  //////////////////////////
 
 float agent_adjustepsilon()
 {
@@ -132,7 +132,7 @@ float agent_adjustepsilon()
 }
 
 
-//////////////////////////	agent_action() //////////////////////////
+//////////////////////////	agent_action()  //////////////////////////
 
 // <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_states, float epsilon, float *d_qtable, bool *d_active) {
@@ -198,7 +198,7 @@ short* agent_action(int2* cstate) {
 }
 
 
-//////////////////////////	agent_update() //////////////////////////
+//////////////////////////	agent_update()  //////////////////////////
 
 // <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *d_qtable, short *d_action, bool *d_active)
