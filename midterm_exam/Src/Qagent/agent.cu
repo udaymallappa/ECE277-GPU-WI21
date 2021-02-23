@@ -3,6 +3,10 @@
 /* Author and Instructer: Cheolhong An
 /* Copyright 2019
 /* University of California, San Diego
+/* 
+/* Midterm
+/* Student: Yifan Wang (A53298382)
+/* Email: 	yiw021@ucsd.edu
 /*************************************************************************/
 
 #include <cuda_fp16.h>
