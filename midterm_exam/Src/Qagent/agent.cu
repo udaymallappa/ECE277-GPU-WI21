@@ -268,7 +268,7 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 
 /** CUDA Dynamic Parallelism
 * @brief it will be called in __global__ Agent_action and Agent_update
-* 		  for agent_id to calculate (.x) greedy_action and (.y) max_qval
+*	for agent_id to calculate (.x) greedy_action and (.y) max_qval
 * @param float2 d_actval 
 * @return __device__ void
 */
