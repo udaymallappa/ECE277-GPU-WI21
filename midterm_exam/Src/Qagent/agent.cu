@@ -47,7 +47,7 @@ float epsilon;
 
 //////////////////////////	agent_init()   //////////////////////////
 
-// <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
+// <<< NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Init_agent(curandState *d_states, bool *d_active)
 {
 	unsigned int agent_id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -58,7 +58,8 @@ __global__ void Init_agent(curandState *d_states, bool *d_active)
 }
 
 
-// occupency
+// Occupancy 
+// <<< QSIZE / THREADS + 1, THREADS >>>	QSIZE = COLS 46 * ROWS 46 * ACTIONS 4 
 __global__ void Init_qtable(float *d_qtable)
 {
 	unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -97,9 +98,9 @@ void agent_init()
 }
 
 
-//////////////////////////	agent_init_episode()  //////////////////////////
+//////////////////////////	agent_init_episode()	//////////////////////////
 
-// <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
+// <<< NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Init_epsiode(bool *d_active) {
 	// agent 1 alive, 0 dead;
 	unsigned int agent_id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -115,7 +116,7 @@ void agent_init_episode() {
 }
 
 
-//////////////////////////	adjust_epsilon()  //////////////////////////
+//////////////////////////	adjust_epsilon()	//////////////////////////
 
 float agent_adjustepsilon()
 {
@@ -132,9 +133,9 @@ float agent_adjustepsilon()
 }
 
 
-//////////////////////////	agent_action()  //////////////////////////
+//////////////////////////	agent_action()	//////////////////////////
 
-// <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
+// <<< NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_states, float epsilon, float *d_qtable, bool *d_active) {
     
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -198,9 +199,9 @@ short* agent_action(int2* cstate) {
 }
 
 
-//////////////////////////	agent_update()  //////////////////////////
+//////////////////////////	agent_update()	//////////////////////////
 
-// <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
+// <<< NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *d_qtable, short *d_action, bool *d_active)
 {
 	int ix = threadIdx.x + blockIdx.x * blockDim.x;
