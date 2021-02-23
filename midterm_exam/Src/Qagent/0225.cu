@@ -63,7 +63,6 @@ __global__ void Init_qtable(float *d_qtable)
 	unsigned int nx = gridDim.x * blockDim.x;
 	unsigned int tid = ix + iy * nx; 
 
-	// make sure it won't be out of range size
 	if (tid < QSIZE) {
 		d_qtable[tid] = 0.0f;
 	}
@@ -149,7 +148,6 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	}
 
 	else {
-		// memory shared
 		__shared__ float qval_cache[THREADS];
 		__shared__ short action_cache[THREADS];
 	
@@ -165,7 +163,6 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	
 		unsigned int stride = ACTIONS / 2;
 	
-		// reduction, best action
 		#pragma unroll
 		while (stride != 0) {
 			if (aid < stride) {
@@ -262,14 +259,9 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-/** <<< 1, #actions 4 >>>  CUDA Dynamic Parallelism
+/** CUDA Dynamic Parallelism
 * @brief it will be called in __global__ Agent_action and Agent_update
 * 		  for agent_id to calculate (.x) greedy_action and (.y) max_qval
-* @param cstate 	int2
-* @param d_qtable 	flaat
-* @param d_actval 	float2
-* @param agent_id 	unsigned int
-* @return __device__ void
 */
 
 // __inline__ __device__ void Get_qAction_qMaxVal(int2 *state, float *d_qtable, float2 *d_actval, unsigned int agent_id)
@@ -310,5 +302,135 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 // 	d_actval[agent_id].y = qval_cache[0];
 // }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_states, float epsilon, float *d_qtable, bool *d_active) {
+    
+//     unsigned int agent_id = blockIdx.x;
+
+// 	if (d_active[agent_id] == 1) 
+// 	{
+// 		// agent is alive 
+// 		float rand_state = curand_uniform(&d_states[agent_id]);
+
+// 		if (rand_state < epsilon) {
+// 			// exploration
+// 			short action = (short)(curand_uniform(&d_states[agent_id]) * ACTIONS);
+// 			if (action == 4) {
+// 				// curand_uniform (0, 1] for keeping uniform make the case action==4 as action==0
+// 				action = 0; 
+// 			}
+// 			d_action[agent_id] = action;
+// 		}
+
+// 		else {
+// 			// exploitation (greedy policy)
+
+// 			// memory shared
+// 			__shared__ float qval_cache[ACTIONS]; // 4 actions  
+//             __shared__ short action_cache[ACTIONS];
+
+// 			unsigned int aid = threadIdx.x; 
+//             action_cache[aid] = (short)threadIdx.x;
+
+// 			// located position on q_table
+// 			unsigned int x = cstate[agent_id].x;
+// 			unsigned int y = cstate[agent_id].y;
+//             unsigned int q_id = (y * COLS + x) * ACTIONS;
+//             // qval_cache[action_id] = d_qtable[q_id + action_id];    
+// 			qval_cache[aid] = d_qtable[q_id + aid];
+            
+//             __syncthreads();
+
+// 			// reduction for getting the max val and action
+//             unsigned int stride = blockDim.x / 2;
+
+//             #pragma unroll
+// 			while (stride != 0) {
+//                 if (aid < stride && qval_cache[aid] < qval_cache[aid + stride])  {
+//                     qval_cache[aid] = qval_cache[aid + stride];
+//                     action_cache[aid] = action_cache[aid + stride];
+//                 } 
+//                 __syncthreads();
+//                 stride /= 2;
+// 			} 
+//             // action = action_cache[0];
+// 			d_action[agent_id] = action_cache[0];
+// 		}
+// 	}
+// }
+
+
+// short* agent_action(int2* cstate) {
+// 	// do exploration or exploitation
+// 	// dim3 block(ACTIONS, 1, 1);
+// 	// dim3 grid(NUM_AGENTS, 1, 1);
+// 	Agent_action <<< grid, block >>> (cstate, d_action, d_states, epsilon, d_qtable, d_active); 
+// 	return d_action;
+// }
+
+
+
+// __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *d_qtable, short *d_action, bool *d_active)
+// {
+// 	// observe next state S' and R
+//     unsigned int agent_id = blockIdx.x;
+
+// 	if (d_active[agent_id] == 1) {
+// 		// agent active
+
+// 		float gamma_item = 0; // if agent is inactive, the gamma_item == 0
+
+// 		if (rewards[agent_id] == 0) {
+// 			// agent still active
+
+// 			// memory shared
+//             __shared__ float qval_cache[ACTIONS];
+//             unsigned int action_id = threadIdx.x;
+
+// 			unsigned int x1 = nstate[agent_id].x;
+// 			unsigned int y1 = nstate[agent_id].y;
+
+// 			unsigned int n_qid = (y1 * COLS + x1) * ACTIONS; // next state (n+1)
+// 			qval_cache[action_id] = d_qtable[n_qid + action_id];
+
+//             __syncthreads();
+
+//             // reduction
+// 			unsigned int i = blockDim.x / 2;
+
+//             #pragma unroll
+//             while (i != 0) {
+//                 if (action_id < i && qval_cache[action_id] < qval_cache[action_id + i]) {
+//                     qval_cache[action_id] = qval_cache[action_id + i];
+//                 }
+//                 __syncthreads();
+//                 i /= 2;
+//             }
+
+//             float best_next_qval = qval_cache[0];
+// 			gamma_item = GAMMA * best_next_qval;
+
+// 		}
+
+// 		// update q_table of current state (n) <- max val of next state (n+1)
+// 		// Q(S, A) <- Q(S, A) + alpha[R + gamma * max Q(S', a) - Q(S, A)]
+
+// 		unsigned int x0 = cstate[agent_id].x;
+// 		unsigned int y0 = cstate[agent_id].y;
+
+// 		unsigned int c_qid = (y0 * COLS + x0) * ACTIONS + (int)d_action[agent_id];
+// 		d_qtable[c_qid] += ALPHA * (rewards[agent_id] + gamma_item - d_qtable[c_qid]);
+
+// 	}
+// }
+
+
+// void agent_update(int2* cstate, int2* nstate, float *rewards)
+// {
+// 	dim3 block(ACTIONS, 1, 1);
+// 	dim3 grid(NUM_AGENTS, 1, 1);
+// 	Agent_update <<<grid, block >>> (cstate, nstate, rewards, d_qtable, d_action, d_active);
+// }
+
+
