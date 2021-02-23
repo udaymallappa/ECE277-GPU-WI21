@@ -269,9 +269,12 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 /** CUDA Dynamic Parallelism
 * @brief it will be called in __global__ Agent_action and Agent_update
 *	for agent_id to calculate (.x) greedy_action and (.y) max_qval
-* @param float2 d_actval 
-* @return __device__ void
 */
+
+// struct actval {
+// 	short action;
+// 	float qval;
+// }
 
 // __inline__ __device__ void Get_qAction_qMaxVal(int2 *state, float *d_qtable, float2 *d_actval, unsigned int agent_id)
 // {
@@ -311,5 +314,76 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 // 	d_actval[agent_id].y = qval_cache[0];
 // }
 
+
+/** Parallel Reduction for single-agent
+ */
+
+// <<< #agents, #actions >>>
+// __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state, float epsilon, float *d_qtable, bool *d_active) {
+    
+// 	// unsigned int agent_id = blockIdx.x * blockDim.x + threadIdx.x;
+//     unsigned int agent_id = blockIdx.x;
+
+// 	if (d_active[agent_id] == 1) 
+// 	{
+// 		// agent is alive 
+
+// 		// located position on q_table
+// 		unsigned int x = cstate[agent_id].x;
+// 		unsigned int y = cstate[agent_id].y;
+
+		
+// 		float rand_state = curand_uniform(&d_state[agent_id]);
+// 		short action;
+
+// 		if (rand_state < epsilon) {
+// 			// exploration
+// 			action = (short)(curand_uniform(&d_state[agent_id]) * NUM_OF_ACTIONS);
+// 			if (action == 4) {
+// 				// curand_uniform (0, 1] for keeping uniform make the case action==4 as action==0
+// 				action = 0; 
+// 			}
+// 		}
+// 		else {
+// 			// exploitation (greedy policy)
+
+// 			// memory shared
+// 			__shared__ float qval_cache[NUM_OF_ACTIONS]; // 4 actions  
+//             __shared__ short action_cache[NUM_OF_ACTIONS];
+
+//             unsigned int action_id = threadIdx.x;
+//             action_cache[action_id] = (short)threadIdx.x;
+
+//             unsigned int q_id = (y * COLS + x) * NUM_OF_ACTIONS;
+//             qval_cache[action_id] = d_qtable[q_id + action_id];    
+            
+//             __syncthreads();
+
+// 			// reduction for getting the max val and action
+//             unsigned int i = blockDim.x / 2;
+
+//             #pragma unroll
+// 			while (i != 0) {
+//                 if (action_id < i && qval_cache[action_id] < qval_cache[action_id + i])  {
+//                     qval_cache[action_id] = qval_cache[action_id + i];
+//                     action_cache[action_id] = action_cache[action_id + i];
+//                 } 
+//                 __syncthreads();
+//                 i /= 2;
+// 			} 
+//             action = action_cache[0];
+// 		}
+
+// 		// decide the action
+// 		d_action[agent_id] = action;
+// 	}
+// }
+
+
+// short* agent_action(int2* cstate) {
+// 	// do exploration or exploitation
+// 	Agent_action <<<NUM_OF_AGENTS, NUM_OF_ACTIONS >>> (cstate, d_action, d_state, epsilon, d_qtable, d_active); 
+// 	return d_action;
+// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
