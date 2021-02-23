@@ -6,7 +6,7 @@
 /* 
 /* Midterm
 /* Student: Yifan Wang (A53298382)
-/* Email: 	yiw021@ucsd.edu
+/* Email: yiw021@ucsd.edu
 /*************************************************************************/
 
 #include <cuda_fp16.h>
@@ -266,13 +266,10 @@ void agent_update(int2* cstate, int2* nstate, float *rewards)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-/** <<< 1, #actions 4 >>>  CUDA Dynamic Parallelism
+/** CUDA Dynamic Parallelism
 * @brief it will be called in __global__ Agent_action and Agent_update
 * 		  for agent_id to calculate (.x) greedy_action and (.y) max_qval
-* @param cstate 	int2
-* @param d_qtable 	flaat
-* @param d_actval 	float2
-* @param agent_id 	unsigned int
+* @param float2 d_actval 
 * @return __device__ void
 */
 
