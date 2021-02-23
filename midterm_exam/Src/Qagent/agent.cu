@@ -73,6 +73,7 @@ __global__ void Init_qtable(float *d_qtable)
 	}
 }
 
+
 void agent_init()
 {
 	// clear action + initQ table + self initialization
@@ -116,7 +117,6 @@ void agent_init_episode() {
 
 //////////////////////////	adjust_epsilon() //////////////////////////
 
-
 float agent_adjustepsilon()
 {
 	if (epsilon > EPS_CEIL) {
@@ -133,7 +133,6 @@ float agent_adjustepsilon()
 
 
 //////////////////////////	agent_action() //////////////////////////
-
 
 // <<<NUM_AGENTS * ACTIONS / THREADS, THREADS >>>
 __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_states, float epsilon, float *d_qtable, bool *d_active) {
@@ -189,6 +188,7 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	}
 }
 
+
 short* agent_action(int2* cstate) {
 	// do exploration or exploitation
 	dim3 block(THREADS, 1, 1);
@@ -196,7 +196,6 @@ short* agent_action(int2* cstate) {
 	Agent_action <<< grid, block >>> (cstate, d_action, d_states, epsilon, d_qtable, d_active); 
 	return d_action;
 }
-
 
 
 //////////////////////////	agent_update() //////////////////////////
@@ -254,13 +253,13 @@ __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *
 	}
 }
 
+
 void agent_update(int2* cstate, int2* nstate, float *rewards)
 {
 	dim3 block(THREADS, 1, 1);
 	dim3 grid(NUM_AGENTS * ACTIONS / block.x, 1, 1);
 	Agent_update <<< grid, block >>> (cstate, nstate, rewards, d_qtable, d_action, d_active);
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
