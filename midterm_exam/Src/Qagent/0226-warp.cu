@@ -143,52 +143,57 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	unsigned int nx = gridDim.x * blockDim.x;
 
 	unsigned int tid = iy * nx + ix;
-	unsigned int agent_id = tid / ACTIONS;
 
-	float rand_state = curand_uniform(&d_states[agent_id]);
-	if (rand_state < epsilon) {
-		// use 1 - curand_uniform to change range from (0, 1] to (1, 0], so it won't get action==4
-		d_action[agent_id] = (short)((1.0f - curand_uniform(&d_states[agent_id])) * ACTIONS); 
-		// short action = (short)(curand_uniform(&d_states[agent_id]) * ACTIONS); 
-		// if (action == 4) action = 0;
-		// d_action[agent_id] = action;
-	}
+	int warps = THREADS / ACTIONS; // 256/4 = 64
 
-	else {
-		// memory shared
-		__shared__ float qval_cache[THREADS];
-		__shared__ short action_cache[THREADS];
-	
-		unsigned int sid = threadIdx.x;
-		unsigned int aid = sid &(ACTIONS - 1); // int aid = sid % ACTIONS;
-		action_cache[sid] = aid;
-	
-		unsigned int x = cstate[agent_id].x, y = cstate[agent_id].y;
-		unsigned int qid = (y * COLS + x) * ACTIONS;
-		qval_cache[sid] = d_qtable[qid + aid];
-	
-		__syncthreads();
-	
-		unsigned int stride = ACTIONS >> 1; // ACTIONS / 2;
-	
-		// reduction, best action
-		#pragma unroll
-		while (stride != 0) {
-			if (aid < stride) {
-				if (qval_cache[sid] < qval_cache[sid + stride])  {
-					qval_cache[sid] = qval_cache[sid + stride];
-					action_cache[sid] = action_cache[sid + stride];
-				}
-			} 
-			__syncthreads();
-			stride = stride >> 1; // stride /= 2;
-		} 
-	
-		if (aid == 0) { // if (sid &(ACTIONS - 1) == 0)// if (sid % ACTIONS == 0) { 
-			d_action[agent_id] = action_cache[sid];
+	if (threadIdx.x < warps) {
+		unsigned int agent_id = tid &(warps - 1); // tid % warps
+		float rand_state = curand_uniform(&d_states[agent_id]);
+		if (rand_state < epsilon) {
+			d_action[agent_id] = (short)(1 - curand_uniform(&d_states[agent_id]) * ACTIONS); // make curand_uniform (0, 1] to (1, 0]
+			return;
 		}
-	
 	}
+
+	__syncthreads();
+
+	// memory shared
+	__shared__ float qval_cache[THREADS];
+	__shared__ short action_cache[THREADS];
+
+	unsigned int sid = threadIdx.x;
+	// unsigned int aid = sid &(ACTIONS - 1); // int aid = sid % ACTIONS;
+	
+	unsigned int aid = sid / warps;
+	action_cache[sid] = aid; 			// 000000... | 111111... | 222222... | 333333...
+
+	unsigned int x = cstate[agent_id].x, y = cstate[agent_id].y;
+	unsigned int qid = (y * COLS + x) * ACTIONS;
+	int agent = 
+	qval_cache[sid % warps + aid * warps] = d_qtable[qid + aid];
+
+	__syncthreads();
+
+	unsigned int stride = ACTIONS >> 1; // ACTIONS / 2;
+
+	// reduction, best action
+	#pragma unroll
+	while (stride != 0) {
+		if (aid < stride) {
+			if (qval_cache[sid] < qval_cache[sid + stride])  {
+				qval_cache[sid] = qval_cache[sid + stride];
+				action_cache[sid] = action_cache[sid + stride];
+			}
+		} 
+		__syncthreads();
+		stride = stride >> 1; // stride /= 2;
+	} 
+
+	if (aid == 0) { // if (sid &(ACTIONS - 1) == 0)// if (sid % ACTIONS == 0) { 
+		d_action[agent_id] = action_cache[sid];
+	}
+
+
 }
 
 
