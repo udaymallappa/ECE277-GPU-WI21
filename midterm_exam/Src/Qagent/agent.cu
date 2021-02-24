@@ -27,13 +27,13 @@
 
 #define THREADS		256
 
-#define GAMMA		0.9
-#define ALPHA		0.5
-#define	EPSILON		1.0
-#define DELTA_EPS	0.01
+#define GAMMA		0.9f		// Discount factor for past rewards
+#define ALPHA		0.5f		// Learning rate
+#define	EPSILON		1.0f	// Epsilon greedy parameter
+#define DELTA_EPS	0.01f 
 
-#define EPS_CEIL	1.0
-#define EPS_BOTTOM	0.0
+#define EPS_MAX		1.0f
+#define EPS_MIN		0.0f
 
 
 short *d_action;
@@ -120,14 +120,14 @@ void agent_init_episode() {
 
 float agent_adjustepsilon()
 {
-	if (epsilon > EPS_CEIL) {
-		epsilon = EPS_CEIL;
+	if (epsilon > EPS_MAX) {
+		epsilon = EPS_MAX;
 	}
-	else if (epsilon < EPS_BOTTOM) {
-		epsilon = EPS_BOTTOM;
+	else if (epsilon < EPS_MIN) {
+		epsilon = EPS_MIN;
 	}
 	else {
-		epsilon -= (float)DELTA_EPS;
+		epsilon -= DELTA_EPS;
 	}
 	return epsilon;
 }
@@ -158,7 +158,7 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 		__shared__ short action_cache[THREADS];
 	
 		int sid = threadIdx.x;
-		int aid = sid % ACTIONS;
+		int aid = sid &(ACTIONS - 1); // int aid = sid % ACTIONS;
 		action_cache[sid] = aid;
 	
 		int x = cstate[agent_id].x, y = cstate[agent_id].y;
@@ -167,7 +167,7 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	
 		__syncthreads();
 	
-		unsigned int stride = ACTIONS / 2;
+		unsigned int stride = ACTIONS >> 1; // ACTIONS / 2;
 	
 		// reduction, best action
 		#pragma unroll
@@ -179,10 +179,10 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 				}
 			} 
 			__syncthreads();
-			stride /= 2;
+			stride = stride >> 1; // stride /= 2;
 		} 
 	
-		if (sid % ACTIONS == 0) {
+		if (aid == 0) { // if (sid &(ACTIONS - 1) == 0)// if (sid % ACTIONS == 0) { 
 			d_action[agent_id] = action_cache[sid];
 		}
 	
@@ -226,7 +226,7 @@ __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *
 			__shared__ float qval_cache[THREADS];
 		
 			int sid = threadIdx.x;
-			int aid = sid % ACTIONS;
+			int aid = sid &(ACTIONS - 1); // int aid = sid % ACTIONS;
 		
 			// next state
 			int x = nstate[agent_id].x, y = nstate[agent_id].y;
@@ -234,7 +234,7 @@ __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *
 			qval_cache[sid] = d_qtable[qid + aid];
 		
 			// reduction, max qval
-			unsigned int stride = ACTIONS / 2;
+			unsigned int stride = ACTIONS >> 1; //ACTIONS / 2;
 		
 			#pragma unroll
 			while (stride != 0) {
@@ -244,10 +244,10 @@ __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *
 					}
 				} 
 				__syncthreads();
-				stride /= 2;
+				stride = stride >> 1; // stride /= 2;
 			} 
 
-			if (sid % ACTIONS == 0)  {
+			if (aid == 0) { // if (sid &(ACTIONS - 1) == 0) { // if (sid % ACTIONS == 0)  {
 				d_qtable[c_qid] += ALPHA * (rewards[agent_id] +  GAMMA * qval_cache[sid] - d_qtable[c_qid]);
 			}
 		}
