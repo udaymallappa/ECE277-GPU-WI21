@@ -149,9 +149,6 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 	if (rand_state < epsilon) {
 		// use 1 - curand_uniform to change range from (0, 1] to (1, 0], so it won't get action==4
 		d_action[agent_id] = (short)((1.0f - curand_uniform(&d_states[agent_id])) * ACTIONS); 
-		// short action = (short)(curand_uniform(&d_states[agent_id]) * ACTIONS); 
-		// if (action == 4) action = 0;
-		// d_action[agent_id] = action;
 	}
 
 	else {
