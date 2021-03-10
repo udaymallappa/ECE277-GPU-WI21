@@ -157,7 +157,7 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 		__shared__ short action_cache[THREADS];
 	
 		unsigned int sid = threadIdx.x;
-		unsigned int aid = sid &(ACTIONS - 1); // int aid = sid % ACTIONS;
+		unsigned int aid = sid &(ACTIONS - 1); // aid = sid % ACTIONS; // 0123 0123 ...
 		action_cache[sid] = aid;
 	
 		unsigned int x = cstate[agent_id].x, y = cstate[agent_id].y;
@@ -181,8 +181,8 @@ __global__ void Agent_action(int2 *cstate, short *d_action, curandState *d_state
 			stride = stride >> 1; // stride /= 2;
 		} 
 	
-		if (aid == 0) { // if (sid &(ACTIONS - 1) == 0)// if (sid % ACTIONS == 0) { 
-			d_action[agent_id] = action_cache[sid];
+		if (aid == 0) { // if (sid &(ACTIONS - 1) == 0)
+			d_action[agent_id] = action_cache[sid]; // 0___ 0___ ...
 		}
 	
 	}
@@ -246,7 +246,7 @@ __global__ void Agent_update(int2* cstate, int2* nstate, float *rewards, float *
 				stride = stride >> 1; // stride /= 2;
 			} 
 
-			if (aid == 0) { // if (sid &(ACTIONS - 1) == 0) { // if (sid % ACTIONS == 0)  {
+			if (aid == 0) { // if (sid &(ACTIONS - 1) == 0) { 
 				d_qtable[c_qid] += ALPHA * (rewards[agent_id] +  GAMMA * qval_cache[sid] - d_qtable[c_qid]);
 			}
 		}
