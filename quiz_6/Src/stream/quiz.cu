@@ -17,20 +17,25 @@ __global__ void vector_add(int *a, int *b, int *c)
 
 #define NSTREAMS 4
 
+
 int main()
 {
     int *a, *b, *c, *golden;
 	int *d_a, *d_b, *d_c;
 	int size = N * sizeof( int );
 
-	// GMEM allication gbuf
-	cudaMalloc( (void **) &d_a, size);
-	cudaMalloc( (void **) &d_b, size);
-	cudaMalloc( (void **) &d_c, size);
+	cudaMalloc( (void **) &d_a, size );
+	cudaMalloc( (void **) &d_b, size );
+	cudaMalloc( (void **) &d_c, size );
 
-	a = (int *)malloc( size );
-	b = (int *)malloc( size );
-	c = (int *)malloc( size );
+	cudaHostAlloc((void **)&a, size, cudaHostAllocDefault);
+	cudaHostAlloc((void **)&b, size, cudaHostAllocDefault);
+	cudaHostAlloc((void **)&c, size, cudaHostAllocDefault);
+
+	//a = (int *)malloc( size );
+	//b = (int *)malloc( size );
+	//c = (int *)malloc( size );
+
 	golden = (int *)malloc(size);
 
 	for( int i = 0; i < N; i++ )
@@ -40,48 +45,41 @@ int main()
 		c[i] = 0;
 	}
 
-	// cudaMemcpy( d_a, a, size, cudaMemcpyHostToDevice );
-	// cudaMemcpy( d_b, b, size, cudaMemcpyHostToDevice );
-
-	// declared streams
 	cudaStream_t streams[NSTREAMS];
-	int streamSize = size / NSTREAMS; // streamBytes = stream_size * sizeof(float);
-
-	// event start
-	// cudaEventRecord(addEvent, 0);
-
 	for (int i = 0; i < NSTREAMS; ++i) {
-
 		cudaStreamCreate(&streams[i]);
-
-		int offset = i * streamSize;
-
-		// cudaMemocpyAsync(cudaMemcpyHostToDevice, streams[i]);
-		cudaMemcpyAsync(&d_a[offset], &a[offset], streamSize, cudaMemcpyHostToDevice, stream[i]);
-		cudaMemcpyAsync(&d_b[offset], &b[offset], streamSize, cudaMemcpyHostToDevice, stream[i]);
-		cudaMemcpyAsync(&d_c[offset], &c[offset], streamSize, cudaMemcpyHostToDevice, stream[i]);
-
-		int mgrid = (N + (THREADS_PER_BLOCK-1)) / THREADS_PER_BLOCK / NSTREAMS;
-		int mblock = THREADS_PER_BLOCK / NSTREAMS;
-		vector_add <<< mgrid,  mblock, 0, streams[i]>>>( &d_a[offset], &d_b[offset], &d_c[offset] );
-		// cudaMemocpyAsync(cudaMemcpyDeviceToHost, streams[i]);
-		cudaMemcpyAsync(&a[offset], &d_a[offset], streamSize, cudaMemcpyDeviceToHost, stream[i]);
-		cudaMemcpyAsync(&b[offset], &d_b[offset], streamSize, cudaMemcpyDeviceToHost, stream[i]);
-		cudaMemcpyAsync(&c[offset], &d_c[offset], streamSize, cudaMemcpyDeviceToHost, stream[i]);
-
-		cudaStreamDestroy(streams[i]);
-
 	}
 
-	// event end
-	// cudaEventRecord(addEvent, 0);
+	int nsdata = N / NSTREAMS;
+	int iBytes = size / NSTREAMS;
 
-	cudaMemcpy( c, d_c, size, cudaMemcpyDeviceToHost );
+	dim3 mgrid((nsdata + (THREADS_PER_BLOCK - 1)) / THREADS_PER_BLOCK);
+	dim3 mblock(THREADS_PER_BLOCK);
+
+	for (int i = 0; i < NSTREAMS; ++i) {
+		int offset = i * nsdata;
+		
+		cudaMemcpyAsync(&d_a[offset], &a[offset], iBytes, cudaMemcpyHostToDevice, streams[i]);
+		cudaMemcpyAsync(&d_b[offset], &b[offset], iBytes, cudaMemcpyHostToDevice, streams[i]);
+
+		vector_add << < mgrid, mblock, 0, streams[i] >> > (&d_a[offset], &d_b[offset], &d_c[offset]);
+		cudaMemcpyAsync(&c[offset], &d_c[offset], iBytes, cudaMemcpyDeviceToHost, streams[i]);
+	}
+
+	for (int i = 0; i < NSTREAMS; ++i) {
+		cudaStreamSynchronize(streams[i]);
+	}
+
+	for (int i = 0; i < NSTREAMS; ++i) {
+		cudaStreamDestroy(streams[i]);
+	}
 
 	bool pass = true;
 	for (int i = 0; i < N; i++) {
-		if (golden[i] != c[i])
+		if (golden[i] != c[i]) {
 			pass = false;
+			//printf("%i %d %d \n", i, golden[i], c[i]);
+		}
 	}
 	
 	if (pass)
@@ -89,11 +87,16 @@ int main()
 	else
 		printf("FAIL\n");
 
-	printf("print your name and id\n");
+	printf("print your name and id \n>> Yifan Wang, A53298382 \n\n");
 
-	free(a);
-	free(b);
-	free(c);
+	cudaFreeHost(a);
+	cudaFreeHost(b);
+	cudaFreeHost(c);
+
+	//free(a);
+	//free(b);
+	//free(c);
+
 	free(golden);
 	cudaFree( d_a );
 	cudaFree( d_b );
