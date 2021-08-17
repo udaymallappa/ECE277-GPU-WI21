@@ -42,7 +42,7 @@ How to debug C++ in VS. :https://www.youtube.com/watch?v=0ebzPwixrJA
 2. Lab2: Single Agent Reinforcement Learning
 3. Lab3: Multi-Agent Reinforcement Learning on CUDA
 4. Midterm: Optimization Strategies for Lab3 
-5. 
+5. Final Project
 
 ### Quiz
 
